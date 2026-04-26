@@ -125,7 +125,7 @@ namespace Controllers
                 }
 
                 var checkedIn = await _repo.CheckIn(reservationId, request.GuestEmail);
-                await _roomRepo.SetRoomState(checkedIn.RoomNumber, Models.State.Dirty);
+                await _roomRepo.SetRoomState(checkedIn.RoomNumber, Models.State.Occupied);
                 return Json(checkedIn);
             }
             catch (NotFoundException)
