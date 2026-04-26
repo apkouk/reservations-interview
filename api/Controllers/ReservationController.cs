@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Models;
 using Models.Errors;
 using Repositories;
+using Validators;
 
 namespace Controllers
 {
@@ -9,10 +10,14 @@ namespace Controllers
     public class ReservationController : Controller
     {
         private ReservationRepository _repo { get; set; }
+        private RoomRepository _roomRepo { get; set; }
+        private GuestRepository _guestRepo { get; set; }
 
-        public ReservationController(ReservationRepository reservationRepository)
+        public ReservationController(ReservationRepository reservationRepository, RoomRepository roomRepository, GuestRepository guestRepository)
         {
             _repo = reservationRepository;
+            _roomRepo = roomRepository;
+            _guestRepo = guestRepository;
         }
 
         [HttpGet, Produces("application/json"), Route("")]
@@ -44,9 +49,14 @@ namespace Controllers
         /// <returns></returns>
         [HttpPost, Produces("application/json"), Route("")]
         public async Task<ActionResult<Reservation>> BookReservation(
-            [FromBody] Reservation newBooking
+            [FromBody] Reservation? newBooking
         )
         {
+            if (newBooking is null)
+            {
+                return BadRequest("Invalid reservation payload.");
+            }
+
             // Provide a real ID if one is not provided
             if (newBooking.Id == Guid.Empty)
             {
@@ -55,8 +65,24 @@ namespace Controllers
 
             try
             {
+                BookingValidator.Validate(newBooking);
+
+                // Verify the guest exists
+                await _guestRepo.GetGuestByEmail(newBooking.GuestEmail);
+
+                // Verify the room exists
+                await _roomRepo.GetRoom(newBooking.RoomNumber);
+
                 var createdReservation = await _repo.CreateReservation(newBooking);
-                return Created($"/reservation/${createdReservation.Id}", createdReservation);
+                return Created($"/reservation/{createdReservation.Id}", createdReservation);
+            }
+            catch (InvalidBooking ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (NotFoundException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -66,6 +92,7 @@ namespace Controllers
                 return BadRequest("Invalid reservation");
             }
         }
+
 
         [HttpDelete, Produces("application/json"), Route("{reservationId}")]
         public async Task<IActionResult> DeleteReservation(Guid reservationId)

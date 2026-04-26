@@ -7,7 +7,7 @@ namespace Db
     public static class Setup
     {
         /// <summary>
-        /// Ensures the DB is available and the requried tables are made
+        /// Ensures the DB is available and the required tables are made
         /// </summary>
         public static async void EnsureDb(IServiceScope scope)
         {
@@ -22,14 +22,26 @@ namespace Db
                 $@"
               CREATE TABLE IF NOT EXISTS Guests (
                 {nameof(Guest.Email)} TEXT PRIMARY KEY NOT NULL,
-                {nameof(Guest.Name)} TEXT NOT NULL
+                {nameof(Guest.Name)} TEXT NOT NULL,
+                {nameof(Guest.Surname)} TEXT
               );
             "
             );
 
+            try
+            {
+                await db.ExecuteAsync(
+                    $"ALTER TABLE Guests ADD COLUMN {nameof(Guest.Surname)} TEXT;"
+                );
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.Message.Contains("duplicate column"))
+            {
+                // column already exists, nothing to do
+            }
+
             await db.ExecuteAsync(
                 $@"
-              CREATE TABLE IF NOT Exists Rooms (
+              CREATE TABLE IF NOT EXISTS Rooms (
                 {nameof(Room.Number)} INT PRIMARY KEY NOT NULL,
                 {nameof(Room.State)} INT NOT NULL
               );

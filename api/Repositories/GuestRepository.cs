@@ -41,12 +41,26 @@ namespace Repositories
             return guest;
         }
 
-        public Task<Guest> CreateGuest(Guest newGuest)
+        public async Task<Guest> CreateGuest(Guest newGuest)
         {
-            return _db.QuerySingleAsync<Guest>(
-                "INSERT INTO Guests(Email, Name) Values(@Email, @Name) RETURNING *",
+            var existing = await GetGuestByEmail(newGuest.Email);
+
+            return await _db.QuerySingleAsync<Guest>(
+                "INSERT INTO Guests(Email, Name, Surname) Values(@Email, @Name, @Surname) RETURNING *",
                 newGuest
             );
+        }
+
+        public async Task<Guest> UpdateGuest(string email, Guest updatedGuest)
+        {
+            var existing = await GetGuestByEmail(email);
+
+            var updated = await _db.QuerySingleAsync<Guest>(
+                "UPDATE Guests SET Name = @Name, Surname = @Surname WHERE Email = @Email RETURNING *",
+                new { existing.Email, updatedGuest.Name, updatedGuest.Surname }
+            );
+
+            return updated;
         }
 
         public async Task<bool> DeleteGuestByEmail(string guestEmail)

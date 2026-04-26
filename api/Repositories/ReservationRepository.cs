@@ -49,10 +49,16 @@ namespace Repositories
 
         public async Task<Reservation> CreateReservation(Reservation newReservation)
         {
-            // TODO Implement
-            return await Task.FromResult(
-                new Reservation { RoomNumber = "000", GuestEmail = "todo" }
+            var db = new ReservationDb(newReservation);
+
+            var created = await _db.QuerySingleAsync<ReservationDb>(
+                @"INSERT INTO Reservations (Id, GuestEmail, RoomNumber, Start, End, CheckedIn, CheckedOut)
+                  VALUES (@Id, @GuestEmail, @RoomNumber, @Start, @End, @CheckedIn, @CheckedOut)
+                  RETURNING *;",
+                db
             );
+
+            return created.ToDomain();
         }
 
         public async Task<bool> DeleteReservation(Guid reservationId)
