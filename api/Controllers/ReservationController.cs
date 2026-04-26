@@ -120,9 +120,9 @@ namespace Controllers
                 var reservation = await _repo.GetReservation(reservationId);
                 var room = await _roomRepo.GetRoom(reservation.RoomNumber);
 
-                if (room.State == Models.State.Dirty)
+                if (room.State != Models.State.Ready)
                 {
-                    return BadRequest("Cannot check in: room is dirty and has not been cleaned yet.");
+                    return BadRequest("Cannot check in: room is not ready for check-in.");
                 }
 
                 var checkedIn = await _repo.CheckIn(reservationId, request.GuestEmail);
