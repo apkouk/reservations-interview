@@ -45,6 +45,40 @@ export function useCheckIn() {
       }).json(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff", "reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+    },
+  });
+}
+
+// 0 = Ready, 1 = Occupied, 2 = Dirty
+export enum RoomState {
+  Ready = 0,
+  Occupied = 1,
+  Dirty = 2,
+}
+
+const RoomSchema = z.object({
+  number: z.string(),
+  state: z.number(),
+});
+
+const RoomListSchema = RoomSchema.array();
+export type StaffRoom = z.infer<typeof RoomSchema>;
+
+export function useGetRoomsState() {
+  return useQuery({
+    queryKey: ["rooms"],
+    queryFn: () => ky.get("/api/room").json().then(RoomListSchema.parseAsync),
+  });
+}
+
+export function useSetRoomState() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ roomNumber, state }: { roomNumber: string; state: RoomState }) =>
+      ky.put(`/api/room/${roomNumber}/state`, { json: { state } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
     },
   });
 }

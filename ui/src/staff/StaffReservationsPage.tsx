@@ -7,13 +7,55 @@ import {
   Flex,
   Heading,
   Section,
+  Separator,
   Switch,
   Table,
   Text,
   TextField,
 } from "@radix-ui/themes";
-import { useGetStaffReservations, useCheckIn, StaffReservation } from "./api";
+import { useGetStaffReservations, useCheckIn, useGetRoomsState, useSetRoomState, RoomState, StaffReservation, StaffRoom } from "./api";
 import { LoadingCard } from "../components/LoadingCard";
+
+function RoomStateDialog({
+  room,
+  targetState,
+  onClose,
+}: {
+  room: StaffRoom;
+  targetState: RoomState;
+  onClose: () => void;
+}) {
+  const setRoomState = useSetRoomState();
+  const label = targetState === RoomState.Ready ? "Clean" : "Dirty";
+
+  async function handleConfirm() {
+    await setRoomState.mutateAsync({ roomNumber: room.number, state: targetState });
+    onClose();
+  }
+
+  return (
+    <Dialog.Content size="3">
+      <Dialog.Title>Mark Room #{room.number} as {label}</Dialog.Title>
+      <Dialog.Description mb="4">
+        Are you sure you want to mark room #{room.number} as <strong>{label}</strong>?
+      </Dialog.Description>
+      <Flex gap="3" justify="end">
+        <Dialog.Close>
+          <Button variant="soft" color="gray" onClick={onClose}>
+            Cancel
+          </Button>
+        </Dialog.Close>
+        <Button
+          color={targetState === RoomState.Ready ? "green" : "red"}
+          onClick={handleConfirm}
+          disabled={setRoomState.isPending}
+        >
+          {setRoomState.isPending ? "Saving..." : `Mark ${label}`}
+        </Button>
+      </Flex>
+    </Dialog.Content>
+  );
+}
 
 function CheckInDialog({
   reservation,
@@ -31,8 +73,9 @@ function CheckInDialog({
     try {
       await checkIn.mutateAsync({ reservationId: reservation.id, guestEmail: email });
       onClose();
-    } catch {
-      setError("Check-in failed. Please verify the email and try again.");
+    } catch (_e: any) {
+      const message = await _e?.response?.text().catch(() => null);
+      setError(message?.replace(/^"|"$/g, "") || "Check-in failed. Please try again.");
     }
   }
 
@@ -80,6 +123,9 @@ export function StaffReservationsPage() {
   const { isLoading, data: reservations, isError } = useGetStaffReservations();
   const [todayOnly, setTodayOnly] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<StaffReservation | null>(null);
+
+  const { data: rooms } = useGetRoomsState();
+  const [roomStateDialog, setRoomStateDialog] = useState<{ room: StaffRoom; targetState: RoomState } | null>(null);
 
   const today = new Date().toLocaleDateString();
 
@@ -160,7 +206,74 @@ export function StaffReservationsPage() {
             />
           )}
         </Dialog.Root>
-      )}             
+      )}
+
+      <Separator my="6" size="4" />
+
+      <Heading size="6" as="h2" color="mint" mb="4">
+        Housekeeping
+      </Heading>
+
+      {rooms && rooms.length > 0 && (
+        <Dialog.Root
+          open={!!roomStateDialog}
+          onOpenChange={(open) => { if (!open) setRoomStateDialog(null); }}
+        >
+        <Table.Root variant="surface">
+          <Table.Header>
+            <Table.Row>
+              <Table.ColumnHeaderCell>Room</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>State</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {rooms.map((room) => (
+              <Table.Row key={room.number}>
+                <Table.Cell>#{room.number}</Table.Cell>
+                <Table.Cell>
+                  {room.state === RoomState.Ready && <Badge color="green">Clean</Badge>}
+                  {room.state === RoomState.Dirty && <Badge color="red">Dirty</Badge>}
+                  {room.state === RoomState.Occupied && <Badge color="blue">Occupied</Badge>}
+                </Table.Cell>
+                <Table.Cell>
+                  <Flex gap="2">
+                    {room.state !== RoomState.Ready && (
+                      <Button
+                        size="1"
+                        variant="soft"
+                        color="green"
+                        onClick={() => setRoomStateDialog({ room, targetState: RoomState.Ready })}
+                      >
+                        Mark Clean
+                      </Button>
+                    )}
+                    {room.state !== RoomState.Dirty && (
+                      <Button
+                        size="1"
+                        variant="soft"
+                        color="red"
+                        onClick={() => setRoomStateDialog({ room, targetState: RoomState.Dirty })}
+                      >
+                        Mark Dirty
+                      </Button>
+                    )}
+                  </Flex>
+                </Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table.Root>
+
+        {roomStateDialog && (
+          <RoomStateDialog
+            room={roomStateDialog.room}
+            targetState={roomStateDialog.targetState}
+            onClose={() => setRoomStateDialog(null)}
+          />
+        )}
+      </Dialog.Root>
+      )}
     </Section>
   );
 }

@@ -41,9 +41,22 @@ namespace Repositories
             return guest;
         }
 
+        public async Task<bool> GuestExists(string guestEmail)
+        {
+            var guest = await _db.QueryFirstOrDefaultAsync<Guest>(
+                "SELECT * FROM Guests WHERE Email = @guestEmail;",
+                new { guestEmail }
+            );
+
+            return guest != null;
+        }
+
         public async Task<Guest> CreateGuest(Guest newGuest)
         {
-            var existing = await GetGuestByEmail(newGuest.Email);
+            if (await GuestExists(newGuest.Email))
+            {
+                throw new ConflictException($"Guest {newGuest.Email} already exists");
+            }
 
             return await _db.QuerySingleAsync<Guest>(
                 "INSERT INTO Guests(Email, Name, Surname) Values(@Email, @Name, @Surname) RETURNING *",

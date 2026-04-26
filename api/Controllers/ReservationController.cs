@@ -116,9 +116,17 @@ namespace Controllers
 
             try
             {
-                var reservation = await _repo.CheckIn(reservationId, request.GuestEmail);
-                await _roomRepo.SetRoomState(reservation.RoomNumber, Models.State.Occupied);
-                return Json(reservation);
+                var reservation = await _repo.GetReservation(reservationId);
+                var room = await _roomRepo.GetRoom(reservation.RoomNumber);
+
+                if (room.State == Models.State.Dirty)
+                {
+                    return BadRequest("Cannot check in: room is dirty and has not been cleaned yet.");
+                }
+
+                var checkedIn = await _repo.CheckIn(reservationId, request.GuestEmail);
+                await _roomRepo.SetRoomState(checkedIn.RoomNumber, Models.State.Dirty);
+                return Json(checkedIn);
             }
             catch (NotFoundException)
             {

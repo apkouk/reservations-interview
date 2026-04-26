@@ -73,5 +73,26 @@ namespace Controllers
 
             return deleted ? NoContent() : NotFound();
         }
+
+        [HttpPut, Produces("application/json"), Route("{roomNumber}/state")]
+        public async Task<IActionResult> SetRoomState(string roomNumber, [FromBody] SetRoomStateRequest? request)
+        {
+            if (request is null)
+            {
+                return BadRequest("Invalid payload.");
+            }
+
+            try
+            {
+                await _repo.SetRoomState(roomNumber, request.State);
+                return NoContent();
+            }
+            catch (NotFoundException)
+            {
+                return NotFound();
+            }
+        }
     }
+
+    public record SetRoomStateRequest(Models.State State);
 }

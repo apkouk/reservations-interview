@@ -12,11 +12,11 @@ var builder = WebApplication.CreateBuilder(args);
         builder.Configuration.GetConnectionString("ReservationsDb")
         ?? "Data Source=reservations.db;Cache=Shared";
 
-    Services.AddSingleton(_ => new SqliteConnection(connectionString));
-    Services.AddSingleton<IDbConnection>(sp => sp.GetRequiredService<SqliteConnection>());
-    Services.AddSingleton<GuestRepository>();
-    Services.AddSingleton<RoomRepository>();
-    Services.AddSingleton<ReservationRepository>();
+    Services.AddScoped(_ => new SqliteConnection(connectionString));
+    Services.AddScoped<IDbConnection>(sp => sp.GetRequiredService<SqliteConnection>());
+    Services.AddScoped<GuestRepository>();
+    Services.AddScoped<RoomRepository>();
+    Services.AddScoped<ReservationRepository>();
     Services.AddMvc(opt =>
     {
         opt.EnableEndpointRouting = false;
