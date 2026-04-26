@@ -32,7 +32,7 @@ namespace Controllers
         [HttpGet, Produces("application/json"), Route("{roomNumber}")]
         public async Task<ActionResult<Room>> GetRoom(string roomNumber)
         {
-            if (roomNumber.Length != 3)
+            if (!Room.IsValidRoomNumber(roomNumber))
             {
                 return BadRequest("Invalid room ID - format is ###, ex 001 / 002 / 101");
             }
@@ -52,6 +52,11 @@ namespace Controllers
         [HttpPost, Produces("application/json"), Route("")]
         public async Task<ActionResult<Room>> CreateRoom([FromBody] Room newRoom)
         {
+            if (!Room.IsValidRoomNumber(newRoom.Number))
+            {
+                return BadRequest("Invalid room ID - format is ###, ex 001 / 002 / 101");
+            }
+
             var createdRoom = await _repo.CreateRoom(newRoom);
 
             if (createdRoom == null)
@@ -65,7 +70,7 @@ namespace Controllers
         [HttpDelete, Produces("application/json"), Route("{roomNumber}")]
         public async Task<IActionResult> DeleteRoom(string roomNumber)
         {
-            if (roomNumber.Length != 3)
+            if (!Room.IsValidRoomNumber(roomNumber))
             {
                 return BadRequest("Invalid room ID - format is ###, ex 001 / 002 / 101");
             }
@@ -78,6 +83,11 @@ namespace Controllers
         [HttpPut, Produces("application/json"), Route("{roomNumber}/state")]
         public async Task<IActionResult> SetRoomState(string roomNumber, [FromBody] SetRoomStateRequest? request)
         {
+            if (!Room.IsValidRoomNumber(roomNumber))
+            {
+                return BadRequest("Invalid room ID - format is ###, ex 001 / 002 / 101");
+            }
+
             if (request is null)
             {
                 return BadRequest("Invalid payload.");
