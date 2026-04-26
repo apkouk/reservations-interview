@@ -74,10 +74,15 @@ namespace Repositories
         public async Task SetRoomState(string roomNumber, State state)
         {
             var roomNumberInt = Room.ConvertRoomNumberToInt(roomNumber);
-            await _db.ExecuteAsync(
+            var updated = await _db.ExecuteAsync(
                 "UPDATE Rooms SET State = @state WHERE Number = @roomNumberInt;",
                 new { state, roomNumberInt }
             );
+
+            if (updated == 0)
+            {
+                throw new NotFoundException($"Room {roomNumber} not found");
+            }
         }
 
         // Inner class to hide the details of a direct mapping to SQLite
