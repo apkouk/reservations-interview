@@ -29,7 +29,7 @@ export function bookRoom(booking: NewReservation) {
     End: toIsoStr(booking.End),
   };
 
-  return ky.post("api/reservation", { json: newReservation }).json<Reservation>();
+  return ky.post("/api/reservation", { json: newReservation }).json<Reservation>();
 }
 
 const RoomSchema = z.object({
@@ -42,6 +42,6 @@ const RoomListSchema = RoomSchema.array();
 export function useGetRooms() {
   return useQuery({
     queryKey: ["rooms"],
-    queryFn: () => ky.get("api/room").json().then(RoomListSchema.parseAsync),
+    queryFn: () => ky.get("/api/room").json().then(RoomListSchema.parseAsync),
   });
 }
