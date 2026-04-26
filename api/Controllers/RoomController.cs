@@ -77,6 +77,11 @@ namespace Controllers
         [HttpPut, Produces("application/json"), Route("{roomNumber}/state")]
         public async Task<IActionResult> SetRoomState(string roomNumber, [FromBody] SetRoomStateRequest? request)
         {
+            if (StaffAuth.IsNotStaff(Request, out IActionResult? authResult))
+            {
+                return authResult!;
+            }
+
             if (request is null)
             {
                 return BadRequest("Invalid payload.");

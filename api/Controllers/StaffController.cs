@@ -20,20 +20,8 @@ namespace Controllers
         /// Checks if the request is from a staff member, if not returns true and a 403 result
         /// </summary>
         /// <param name="request"></param>
-        private bool IsNotStaff(HttpRequest request, out IActionResult? result)
-        {
-            // TODO explore UseAuthentication
-            request.Cookies.TryGetValue("access", out string? accessValue);
-
-            if (accessValue == null || accessValue == "0")
-            {
-                result = StatusCode(403);
-                return true;
-            }
-
-            result = null;
-            return false;
-        }
+        private static bool IsNotStaff(HttpRequest request, out IActionResult? result)
+            => StaffAuth.IsNotStaff(request, out result);
 
         [HttpGet, Route("login")]
         public IActionResult CheckCode([FromHeader(Name = "X-Staff-Code")] string accessCode)
