@@ -1,15 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
+using Models;
+using Repositories;
 
 namespace Controllers
 {
-    [Route("staff")]
+    [Tags("Staff"), Route("staff")]
     public class StaffController : Controller
     {
         private IConfiguration Config { get; set; }
+        private ReservationRepository _reservations { get; set; }
 
-        public StaffController(IConfiguration config)
+        public StaffController(IConfiguration config, ReservationRepository reservations)
         {
             Config = config;
+            _reservations = reservations;
         }
 
         /// <summary>
@@ -37,19 +41,17 @@ namespace Controllers
             var configuredSecret = Config.GetValue<string>("staffAccessCode");
             if (configuredSecret != accessCode)
             {
-                // don't set cookie, don't indicate anything
-                return NoContent();
+                return StatusCode(403);
             }
             Response.Cookies.Append(
                 "access",
                 "1",
                 new CookieOptions
-                // TODO evaluate cookie options & auth mechanism for best security practices
                 {
                     IsEssential = true,
                     SameSite = SameSiteMode.Strict,
                     HttpOnly = true,
-                    Secure = true
+                    Secure = false
                 }
             );
             return NoContent();
@@ -64,6 +66,18 @@ namespace Controllers
             }
 
             return Ok("Authorized");
+        }
+
+        [HttpGet, Produces("application/json"), Route("reservations")]
+        public async Task<IActionResult> GetReservations()
+        {
+            if (IsNotStaff(Request, out IActionResult? result))
+            {
+                return result!;
+            }
+
+            var reservations = await _reservations.GetUpcomingReservations();
+            return Json(reservations);
         }
     }
 }
