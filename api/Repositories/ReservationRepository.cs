@@ -2,6 +2,7 @@ using System.Data;
 using Dapper;
 using Models;
 using Models.Errors;
+using Validators;
 
 namespace Repositories
 {
@@ -49,6 +50,8 @@ namespace Repositories
 
         public async Task<Reservation> CreateReservation(Reservation newReservation)
         {
+            await CheckForConflict(newReservation);
+
             var db = new ReservationDb(newReservation);
 
             var created = await _db.QuerySingleAsync<ReservationDb>(
@@ -61,6 +64,25 @@ namespace Repositories
             return created.ToDomain();
         }
 
+        private async Task CheckForConflict(Reservation newReservation)
+        {
+            var conflict = await _db.QueryFirstOrDefaultAsync<ReservationDb>(
+                @"SELECT * FROM Reservations
+                  WHERE RoomNumber = @RoomNumber
+                  AND Start < @End
+                  AND End > @Start
+                  LIMIT 1;",
+                new
+                {
+                    RoomNumber = Room.ConvertRoomNumberToInt(newReservation.RoomNumber),
+                    newReservation.Start,
+                    newReservation.End
+                }
+            );
+
+            ReservationConflictValidator.ValidateNoConflict(newReservation, conflict != null);
+        }       
+
         public async Task<bool> DeleteReservation(Guid reservationId)
         {
             var deleted = await _db.ExecuteAsync(
@@ -72,48 +94,48 @@ namespace Repositories
         }
 
         private class ReservationDb
+    {
+        public string Id { get; set; }
+        public int RoomNumber { get; set; }
+
+        public string GuestEmail { get; set; }
+
+        public DateTime Start { get; set; }
+        public DateTime End { get; set; }
+        public bool CheckedIn { get; set; }
+        public bool CheckedOut { get; set; }
+
+        public ReservationDb()
         {
-            public string Id { get; set; }
-            public int RoomNumber { get; set; }
+            Id = Guid.Empty.ToString();
+            RoomNumber = 0;
+            GuestEmail = "";
+        }
 
-            public string GuestEmail { get; set; }
+        public ReservationDb(Reservation reservation)
+        {
+            Id = reservation.Id.ToString();
+            RoomNumber = Room.ConvertRoomNumberToInt(reservation.RoomNumber);
+            GuestEmail = reservation.GuestEmail;
+            Start = reservation.Start;
+            End = reservation.End;
+            CheckedIn = reservation.CheckedIn;
+            CheckedOut = reservation.CheckedOut;
+        }
 
-            public DateTime Start { get; set; }
-            public DateTime End { get; set; }
-            public bool CheckedIn { get; set; }
-            public bool CheckedOut { get; set; }
-
-            public ReservationDb()
+        public Reservation ToDomain()
+        {
+            return new Reservation
             {
-                Id = Guid.Empty.ToString();
-                RoomNumber = 0;
-                GuestEmail = "";
-            }
-
-            public ReservationDb(Reservation reservation)
-            {
-                Id = reservation.Id.ToString();
-                RoomNumber = Room.ConvertRoomNumberToInt(reservation.RoomNumber);
-                GuestEmail = reservation.GuestEmail;
-                Start = reservation.Start;
-                End = reservation.End;
-                CheckedIn = reservation.CheckedIn;
-                CheckedOut = reservation.CheckedOut;
-            }
-
-            public Reservation ToDomain()
-            {
-                return new Reservation
-                {
-                    Id = Guid.Parse(Id),
-                    RoomNumber = Room.FormatRoomNumber(RoomNumber),
-                    GuestEmail = GuestEmail,
-                    Start = Start,
-                    End = End,
-                    CheckedIn = CheckedIn,
-                    CheckedOut = CheckedOut
-                };
-            }
+                Id = Guid.Parse(Id),
+                RoomNumber = Room.FormatRoomNumber(RoomNumber),
+                GuestEmail = GuestEmail,
+                Start = Start,
+                End = End,
+                CheckedIn = CheckedIn,
+                CheckedOut = CheckedOut
+            };
         }
     }
+}
 }
