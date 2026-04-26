@@ -33,7 +33,8 @@ namespace Controllers
                     IsEssential = true,
                     SameSite = SameSiteMode.Strict,
                     HttpOnly = true,
-                    Secure = Request.IsHttps
+                    Secure = Request.IsHttps,
+                    Path = "/api"
                 }
             );
             return NoContent();
