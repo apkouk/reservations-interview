@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Models;
 using Models.Errors;
@@ -6,7 +7,7 @@ using Validators;
 
 namespace Controllers
 {
-    [Tags("Reservations"), Route("reservation")]
+    [Tags("Reservations"), Route("reservation"), Authorize(Policy = "StaffOnly")]
     public class ReservationController : Controller
     {
         private ReservationRepository _repo { get; set; }

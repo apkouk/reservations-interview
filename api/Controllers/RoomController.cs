@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Models;
 using Models.Errors;
@@ -5,7 +6,7 @@ using Repositories;
 
 namespace Controllers
 {
-    [Tags("Rooms"), Route("room")]
+    [Tags("Rooms"), Route("room"), Authorize(Policy = "StaffOnly")]
     public class RoomController : Controller
     {
         private RoomRepository _repo { get; set; }
@@ -77,11 +78,6 @@ namespace Controllers
         [HttpPut, Produces("application/json"), Route("{roomNumber}/state")]
         public async Task<IActionResult> SetRoomState(string roomNumber, [FromBody] SetRoomStateRequest? request)
         {
-            if (StaffAuth.IsNotStaff(Request, out IActionResult? authResult))
-            {
-                return authResult!;
-            }
-
             if (request is null)
             {
                 return BadRequest("Invalid payload.");

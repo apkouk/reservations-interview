@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Models;
 using Repositories;
@@ -14,14 +15,7 @@ namespace Controllers
         {
             Config = config;
             _reservations = reservations;
-        }
-
-        /// <summary>
-        /// Checks if the request is from a staff member, if not returns true and a 403 result
-        /// </summary>
-        /// <param name="request"></param>
-        private static bool IsNotStaff(HttpRequest request, out IActionResult? result)
-            => StaffAuth.IsNotStaff(request, out result);
+        }       
 
         [HttpGet, Route("login")]
         public IActionResult CheckCode([FromHeader(Name = "X-Staff-Code")] string accessCode)
@@ -39,31 +33,16 @@ namespace Controllers
                     IsEssential = true,
                     SameSite = SameSiteMode.Strict,
                     HttpOnly = true,
-                    Secure = false
+                    Secure = Request.IsHttps
                 }
             );
             return NoContent();
         }
 
-        [HttpGet, Route("check")]
-        public IActionResult CheckCookie()
-        {
-            if (IsNotStaff(Request, out IActionResult? result))
-            {
-                return result!;
-            }
-
-            return Ok("Authorized");
-        }
-
-        [HttpGet, Produces("application/json"), Route("reservations")]
+       
+        [HttpGet, Produces("application/json"), Route("reservations"), Authorize(Policy = "StaffOnly")]
         public async Task<IActionResult> GetReservations()
-        {
-            if (IsNotStaff(Request, out IActionResult? result))
-            {
-                return result!;
-            }
-
+        {         
             var reservations = await _reservations.GetUpcomingReservations();
             return Json(reservations);
         }

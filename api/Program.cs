@@ -1,5 +1,8 @@
 using System.Data;
+using Authorization;
 using Db;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Data.Sqlite;
 using Repositories;
 
@@ -22,6 +25,14 @@ var builder = WebApplication.CreateBuilder(args);
         opt.EnableEndpointRouting = false;
     });
     Services.AddCors();
+    Services.AddAuthentication("NoOp")
+        .AddScheme<AuthenticationSchemeOptions, NoOpAuthenticationHandler>("NoOp", _ => { });
+    Services.AddAuthorization(options =>
+    {
+        options.AddPolicy("StaffOnly", policy =>
+            policy.AddRequirements(new StaffRequirement()));
+    });
+    Services.AddSingleton<IAuthorizationHandler, StaffAuthorizationHandler>();
     Services.AddEndpointsApiExplorer();
     Services.AddSwaggerGen();
 }
@@ -43,6 +54,8 @@ var app = builder.Build();
     }
 
     app.UsePathBase("/api")
+        .UseAuthentication()
+        .UseAuthorization()
         .UseMvc()
         .UseCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader())
         .UseSwagger()

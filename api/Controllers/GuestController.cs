@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Models;
 using Models.Errors;
@@ -5,7 +6,7 @@ using Repositories;
 
 namespace Controllers
 {
-    [Tags("Guests"), Route("guest")]
+    [Tags("Guests"), Route("guest"), Authorize(Policy = "StaffOnly")]
     public class GuestController : Controller
     {
         private GuestRepository _repo;
