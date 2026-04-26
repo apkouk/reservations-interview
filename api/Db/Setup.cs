@@ -28,15 +28,12 @@ namespace Db
             "
             );
 
-            try
+            var columns = await db.QueryAsync<string>("SELECT name FROM pragma_table_info('Guests');");
+            if (!columns.Any(c => c == nameof(Guest.Surname)))
             {
                 await db.ExecuteAsync(
                     $"ALTER TABLE Guests ADD COLUMN {nameof(Guest.Surname)} TEXT;"
                 );
-            }
-            catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.Message.Contains("duplicate column"))
-            {
-                // column already exists, nothing to do
             }
 
             await db.ExecuteAsync(
