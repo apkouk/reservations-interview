@@ -114,6 +114,11 @@ namespace Repositories
                 throw new InvalidOperationException("Email does not match reservation.");
             }
 
+            if (reservation.CheckedOut)
+            {
+                throw new InvalidOperationException("Reservation has already been checked out.");
+            }
+
             if (reservation.CheckedIn)
             {
                 throw new InvalidOperationException("Reservation is already checked in.");
