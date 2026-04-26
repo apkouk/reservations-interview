@@ -71,6 +71,15 @@ namespace Repositories
             return deleted > 0;
         }
 
+        public async Task SetRoomState(string roomNumber, State state)
+        {
+            var roomNumberInt = Room.ConvertRoomNumberToInt(roomNumber);
+            await _db.ExecuteAsync(
+                "UPDATE Rooms SET State = @state WHERE Number = @roomNumberInt;",
+                new { state, roomNumberInt }
+            );
+        }
+
         // Inner class to hide the details of a direct mapping to SQLite
         private class RoomDb
         {

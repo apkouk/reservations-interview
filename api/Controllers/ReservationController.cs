@@ -105,5 +105,31 @@ namespace Controllers
 
             return result ? NoContent() : NotFound();
         }
+
+        [HttpPost, Produces("application/json"), Route("{reservationId}/checkin")]
+        public async Task<ActionResult<Reservation>> CheckIn(Guid reservationId, [FromBody] CheckInRequest? request)
+        {
+            if (request is null || string.IsNullOrEmpty(request.GuestEmail))
+            {
+                return BadRequest("Guest email is required.");
+            }
+
+            try
+            {
+                var reservation = await _repo.CheckIn(reservationId, request.GuestEmail);
+                await _roomRepo.SetRoomState(reservation.RoomNumber, Models.State.Occupied);
+                return Json(reservation);
+            }
+            catch (NotFoundException)
+            {
+                return NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
+
+    public record CheckInRequest(string GuestEmail);
 }

@@ -105,6 +105,28 @@ namespace Repositories
             return deleted > 0;
         }
 
+        public async Task<Reservation> CheckIn(Guid reservationId, string guestEmail)
+        {
+            var reservation = await GetReservation(reservationId);
+
+            if (!string.Equals(reservation.GuestEmail, guestEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Email does not match reservation.");
+            }
+
+            if (reservation.CheckedIn)
+            {
+                throw new InvalidOperationException("Reservation is already checked in.");
+            }
+
+            var updated = await _db.QuerySingleAsync<ReservationDb>(
+                "UPDATE Reservations SET CheckedIn = 1 WHERE Id = @id RETURNING *;",
+                new { id = reservationId.ToString() }
+            );
+
+            return updated.ToDomain();
+        }
+
         private class ReservationDb
     {
         public string Id { get; set; }
