@@ -81,7 +81,7 @@ namespace Controllers
                 // so it automatically prepends whatever PathBase (e.g. /api) the host or reverse proxy has configured.
                 // The Location header will now always be a correctly-rooted URL that resolves to GET /reservation/{id}
                 // regardless of where the app is mounted.
-                return CreatedAtAction(nameof(GetRoom), new { reservationId = createdReservation.Id }, createdReservation);
+                return CreatedAtAction(nameof(GetReservation), new { reservationId = createdReservation.Id }, createdReservation);
             }
             catch (ConflictException ex)
             {

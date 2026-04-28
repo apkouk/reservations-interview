@@ -3,6 +3,7 @@ using Authorization;
 using Db;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Data.Sqlite;
 using Repositories;
 
@@ -36,6 +37,14 @@ var builder = WebApplication.CreateBuilder(args);
     Services.AddEndpointsApiExplorer();
     Services.AddSwaggerGen();
     Services.AddDataProtection();
+    Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        // Caddy runs as a local reverse proxy; clear the default known-networks
+        // restriction so the forwarded headers are always accepted.
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
 }
 
 var app = builder.Build();
@@ -55,6 +64,7 @@ var app = builder.Build();
         return;
     }
 
+    app.UseForwardedHeaders();
     app.UsePathBase("/api")
         .UseCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader())
         .UseAuthentication()
