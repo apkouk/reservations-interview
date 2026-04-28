@@ -43,7 +43,8 @@ var app = builder.Build();
 {
     try
     {
-        Setup.EnsureDb(app.Services.CreateScope());
+        using var scope = app.Services.CreateScope();
+        await Setup.EnsureDb(scope);
     }
     catch (Exception ex)
     {
@@ -54,10 +55,10 @@ var app = builder.Build();
     }
 
     app.UsePathBase("/api")
+        .UseCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader())
         .UseAuthentication()
         .UseAuthorization()
-        .UseMvc()
-        .UseCors(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader())
+        .UseMvc()       
         .UseSwagger()
         .UseSwaggerUI();
 }

@@ -131,8 +131,10 @@ namespace Controllers
                     return BadRequest("Cannot check in: room is not ready for check-in.");
                 }
 
-                var checkedIn = await _repo.CheckIn(reservationId, request.GuestEmail);
-                await _roomRepo.SetRoomState(checkedIn.RoomNumber, Models.State.Occupied);
+                // Atomically marks the reservation checked-in and sets the room to Occupied
+                // in a single transaction, reusing the already-loaded reservation to avoid
+                // an extra round-trip inside the repository.
+                var checkedIn = await _repo.CheckInWithRoomUpdate(reservation, request.GuestEmail);
                 return Json(checkedIn);
             }
             catch (NotFoundException)
