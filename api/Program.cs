@@ -11,33 +11,33 @@ var builder = WebApplication.CreateBuilder(args);
 
 
 {
-    var Services = builder.Services;
+    var services = builder.Services;
     var connectionString =
         builder.Configuration.GetConnectionString("ReservationsDb")
         ?? "Data Source=reservations.db;Cache=Shared";
 
-    Services.AddScoped(_ => new SqliteConnection(connectionString));
-    Services.AddScoped<IDbConnection>(sp => sp.GetRequiredService<SqliteConnection>());
-    Services.AddScoped<GuestRepository>();
-    Services.AddScoped<RoomRepository>();
-    Services.AddScoped<ReservationRepository>();
-    Services.AddMvc(opt =>
+    services.AddScoped(_ => new SqliteConnection(connectionString));
+    services.AddScoped<IDbConnection>(sp => sp.GetRequiredService<SqliteConnection>());
+    services.AddScoped<GuestRepository>();
+    services.AddScoped<RoomRepository>();
+    services.AddScoped<ReservationRepository>();
+    services.AddMvc(opt =>
     {
         opt.EnableEndpointRouting = false;
     });
-    Services.AddCors();
-    Services.AddAuthentication("NoOp")
+    services.AddCors();
+    services.AddAuthentication("NoOp")
         .AddScheme<AuthenticationSchemeOptions, NoOpAuthenticationHandler>("NoOp", _ => { });
-    Services.AddAuthorization(options =>
+    services.AddAuthorization(options =>
     {
         options.AddPolicy("StaffOnly", policy =>
             policy.AddRequirements(new StaffRequirement()));
     });
-    Services.AddSingleton<IAuthorizationHandler, StaffAuthorizationHandler>();
-    Services.AddEndpointsApiExplorer();
-    Services.AddSwaggerGen();
-    Services.AddDataProtection();
-    Services.Configure<ForwardedHeadersOptions>(options =>
+    services.AddSingleton<IAuthorizationHandler, StaffAuthorizationHandler>();
+    services.AddEndpointsApiExplorer();
+    services.AddSwaggerGen();
+    services.AddDataProtection();
+    services.Configure<ForwardedHeadersOptions>(options =>
     {
         options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
         // Trust forwarded headers only from loopback addresses (127.0.0.1 / ::1).
@@ -45,10 +45,14 @@ var builder = WebApplication.CreateBuilder(args);
         // clients from spoofing X-Forwarded-For or X-Forwarded-Proto.
         options.KnownNetworks.Clear();
         options.KnownProxies.Clear();
-        //The fix pins the trusted proxy list to the loopback addresses(127.0.0.1 and::1) instead of trusting everyone. Since Caddy runs on the same machine,
-        //all its forwarded headers arrive from loopback and are still honoured.Any request that reaches the ASP.NET Core process from a non-loopback
-        //address — e.g. if the port is accidentally exposed — will have its X-Forwarded - *headers silently stripped before reaching auth or cookie middleware,
-        //preventing scheme and IP spoofing.
+        // The fix pins the trusted proxy list to the loopback addresses
+        // (127.0.0.1 and ::1) instead of trusting everyone. Since Caddy runs on
+        // the same machine, all its forwarded headers arrive from loopback and
+        // are still honored. Any request that reaches the ASP.NET Core process
+        // from a non-loopback address, for example if the port is accidentally
+        // exposed, will have its X-Forwarded-For and X-Forwarded-Proto headers
+        // silently stripped before reaching auth or cookie middleware,
+        // preventing scheme and IP spoofing.
         options.KnownProxies.Add(System.Net.IPAddress.Loopback);    // 127.0.0.1
         options.KnownProxies.Add(System.Net.IPAddress.IPv6Loopback); // ::1
     });

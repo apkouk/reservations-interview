@@ -77,11 +77,10 @@ namespace Controllers
 
                 var createdReservation = await _repo.CreateReservation(newBooking);
 
-                // CreatedAtAction delegates URL generation to the routing infrastructure,
-                // so it automatically prepends whatever PathBase (e.g. /api) the host or reverse proxy has configured.
-                // The Location header will now always be a correctly-rooted URL that resolves to GET /reservation/{id}
-                // regardless of where the app is mounted.
-                return CreatedAtAction(nameof(GetReservation), new { reservationId = createdReservation.Id }, createdReservation);
+                // Do not emit a Location header pointing at GetReservation because that
+                // endpoint is restricted to staff-only callers while this action allows
+                // anonymous bookings. Return 201 Created with the created reservation body.
+                return StatusCode(StatusCodes.Status201Created, createdReservation);
             }
             catch (ConflictException ex)
             {

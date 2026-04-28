@@ -161,27 +161,31 @@ namespace Repositories
 
             using var tx = _db.BeginTransaction();
 
-            var updated = await _db.QuerySingleAsync<ReservationDb>(
-                "UPDATE Reservations SET CheckedIn = 1 WHERE Id = @id RETURNING *;",
-                new { id = reservation.Id.ToString() },
-                tx
-            );
-
-            var roomNumberInt = Room.ConvertRoomNumberToInt(reservation.RoomNumber);
-            var updatedRooms = await _db.ExecuteAsync(
-                       "UPDATE Rooms SET State = @state WHERE Number = @roomNumberInt;",
-                       new { state = Models.State.Occupied, roomNumberInt },
-                       tx
-                   );       
-
-            if (updatedRooms != 1)
+            try
             {
-                throw new InvalidOperationException("Room update failed for reservation check-in.");
+                var updated = await _db.QuerySingleAsync<ReservationDb>(
+                    "UPDATE Reservations SET CheckedIn = 1 WHERE Id = @id RETURNING *;",
+                    new { id = reservation.Id.ToString() },
+                    tx
+                );
+                var roomNumberInt = Room.ConvertRoomNumberToInt(reservation.RoomNumber);
+                var updatedRooms = await _db.ExecuteAsync(
+                           "UPDATE Rooms SET State = @state WHERE Number = @roomNumberInt;",
+                           new { state = Models.State.Occupied, roomNumberInt },
+                           tx
+                       );
+                if (updatedRooms != 1)
+                {
+                    throw new InvalidOperationException("Room update failed for reservation check-in.");
+                }
+                tx.Commit();
+                return updated.ToDomain();
             }
-
-            tx.Commit();
-
-            return updated.ToDomain();
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
         }
 
         private class ReservationDb

@@ -24,6 +24,15 @@ namespace Controllers
         public IActionResult CheckCode([FromHeader(Name = "X-Staff-Code")] string accessCode)
         {
             var configuredSecret = Config.GetValue<string>("staffAccessCode");
+
+            if (string.IsNullOrEmpty(configuredSecret))
+            {
+                // staffAccessCode is missing from configuration — this is a server misconfiguration,
+                // not a wrong credential. Return 500 so it is distinct from a genuine 403.
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "Staff access code is not configured. Contact the system administrator.");
+            }
+
             if (configuredSecret != accessCode)
             {
                 return StatusCode(403);
