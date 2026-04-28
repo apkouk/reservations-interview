@@ -29,7 +29,7 @@ namespace Repositories
 
         public async Task<IEnumerable<Reservation>> GetUpcomingReservations()
         {
-            var today = DateTime.UtcNow.Date.ToString("yyyy-MM-dd");
+            var today = DateTime.UtcNow.Date;
 
             var reservations = await _db.QueryAsync<ReservationDb>(
                 "SELECT * FROM Reservations WHERE End >= @today ORDER BY Start ASC;",
@@ -128,6 +128,48 @@ namespace Repositories
                 "UPDATE Reservations SET CheckedIn = 1 WHERE Id = @id RETURNING *;",
                 new { id = reservationId.ToString() }
             );
+
+            return updated.ToDomain();
+        }
+
+        /// <summary>
+        /// Validates the check-in conditions against the already-loaded <paramref name="reservation"/>,
+        /// then atomically marks the reservation as checked-in and sets the room state to Occupied
+        /// inside a single transaction, avoiding partial-update inconsistencies.
+        /// </summary>
+        public async Task<Reservation> CheckInWithRoomUpdate(Reservation reservation, string guestEmail)
+        {
+            if (!string.Equals(reservation.GuestEmail, guestEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Email does not match reservation.");
+            }
+
+            if (reservation.CheckedOut)
+            {
+                throw new InvalidOperationException("Reservation has already been checked out.");
+            }
+
+            if (reservation.CheckedIn)
+            {
+                throw new InvalidOperationException("Reservation is already checked in.");
+            }
+
+            using var tx = _db.BeginTransaction();
+
+            var updated = await _db.QuerySingleAsync<ReservationDb>(
+                "UPDATE Reservations SET CheckedIn = 1 WHERE Id = @id RETURNING *;",
+                new { id = reservation.Id.ToString() },
+                tx
+            );
+
+            var roomNumberInt = Room.ConvertRoomNumberToInt(reservation.RoomNumber);
+            await _db.ExecuteAsync(
+                "UPDATE Rooms SET State = @state WHERE Number = @roomNumberInt;",
+                new { state = Models.State.Occupied, roomNumberInt },
+                tx
+            );
+
+            tx.Commit();
 
             return updated.ToDomain();
         }

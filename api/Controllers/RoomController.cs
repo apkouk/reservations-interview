@@ -34,7 +34,7 @@ namespace Controllers
         {
             if (!Room.IsValidRoomNumber(roomNumber))
             {
-                return BadRequest("Invalid room ID - format is ###, ex 001 / 002 / 101");
+                return BadRequest("Invalid room ID - must be exactly 3 digits and the last two digits cannot be 00 (e.g. 101, 202).");
             }
 
             try
@@ -54,7 +54,7 @@ namespace Controllers
         {
             if (!Room.IsValidRoomNumber(newRoom.Number))
             {
-                return BadRequest("Invalid room ID - format is ###, ex 001 / 002 / 101");
+                return BadRequest("Invalid room ID - must be exactly 3 digits and the last two digits cannot be 00 (e.g. 101, 202).");
             }
 
             var createdRoom = await _repo.CreateRoom(newRoom);
@@ -72,7 +72,7 @@ namespace Controllers
         {
             if (!Room.IsValidRoomNumber(roomNumber))
             {
-                return BadRequest("Invalid room ID - format is ###, ex 001 / 002 / 101");
+                return BadRequest("Invalid room ID - must be exactly 3 digits and the last two digits cannot be 00 (e.g. 101, 202).");
             }
 
             var deleted = await _repo.DeleteRoom(roomNumber);
@@ -85,7 +85,7 @@ namespace Controllers
         {
             if (!Room.IsValidRoomNumber(roomNumber))
             {
-                return BadRequest("Invalid room ID - format is ###, ex 001 / 002 / 101");
+                return BadRequest("Invalid room ID - must be exactly 3 digits and the last two digits cannot be 00 (e.g. 101, 202).");
             }
 
             if (request is null)

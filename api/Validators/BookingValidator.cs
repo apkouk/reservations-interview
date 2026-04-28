@@ -10,7 +10,7 @@ namespace Validators
         {
             if (!Room.IsValidRoomNumber(booking.RoomNumber))
             {
-                throw new InvalidBooking($"'{booking.RoomNumber}' is not a valid room number.");
+                throw new InvalidBooking($"'{booking.RoomNumber}' is not a valid room number - must be exactly 3 digits and the last two digits cannot be 00 (e.g. 101, 202).");
             }
 
             if (!Regex.IsMatch(booking.GuestEmail, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))

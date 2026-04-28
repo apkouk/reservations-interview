@@ -59,8 +59,10 @@ namespace api.Tests
                 {
                     Id = id.ToString(),
                     RoomNumber = int.Parse(room),
-                    Start = start,
-                    End = end,
+                    // Pass DateTime so Dapper serialises to "yyyy-MM-dd HH:mm:ss", matching
+                    // what CreateReservation stores and what GetUpcomingReservations compares against.
+                    Start = DateTime.Parse(start),
+                    End = DateTime.Parse(end),
                     CheckedIn = checkedIn ? 1 : 0,
                     CheckedOut = checkedOut ? 1 : 0
                 });
@@ -88,51 +90,91 @@ namespace api.Tests
         }
 
         // ── GetUpcomingReservations ──────────────────────────────────────────────
+        //
+        // startDaysFromNow / endDaysFromNow are offsets relative to DateTime.UtcNow.Date
+        // so the tests stay correct regardless of when they are run.
 
-        [Test]
-        public async Task GetUpcomingReservations_PastReservation_IsExcluded()
+        // Single-reservation inclusion / exclusion
+        [TestCase(-10, -1, 0, TestName = "Upcoming_EndedYesterday_IsExcluded")]
+        [TestCase(-5,  -5, 0, TestName = "Upcoming_EndedFiveDaysAgo_IsExcluded")]
+        [TestCase(-1,   0, 1, TestName = "Upcoming_EndsToday_IsIncluded")]
+        [TestCase( 0,   1, 1, TestName = "Upcoming_StartsTodayEndsTomorrow_IsIncluded")]
+        [TestCase( 1,   5, 1, TestName = "Upcoming_StartsAndEndsFuture_IsIncluded")]
+        [TestCase( 0,  30, 1, TestName = "Upcoming_EndsThirtyDaysAhead_IsIncluded")]
+        public async Task GetUpcomingReservations_SingleReservation_CountMatchesExpected(
+            int startDaysFromNow, int endDaysFromNow, int expectedCount)
         {
-            // A reservation that ended well in the past
-            await Insert("101", "2000-01-01", "2000-01-05");
+            var today = DateTime.UtcNow.Date;
+            var start = today.AddDays(startDaysFromNow).ToString("yyyy-MM-dd");
+            var end   = today.AddDays(endDaysFromNow).ToString("yyyy-MM-dd");
+
+            await Insert("101", start, end);
 
             var result = await _repo.GetUpcomingReservations();
 
-            Assert.That(result, Is.Empty);
+            Assert.That(result.Count(), Is.EqualTo(expectedCount));
         }
 
-        [Test]
-        public async Task GetUpcomingReservations_FutureReservation_IsIncluded()
+        // Mixed past + future — only upcoming ones come back
+        [TestCase(1, 1, TestName = "Upcoming_OnePastOneFuture_ReturnsOneFuture")]
+        [TestCase(2, 2, TestName = "Upcoming_TwoPastTwoFuture_ReturnsTwoFuture")]
+        public async Task GetUpcomingReservations_MixedReservations_ReturnsOnlyUpcoming(
+            int pastCount, int futureCount)
         {
-            // A reservation ending far in the future
-            await Insert("101", "2099-01-01", "2099-01-10");
+            var today = DateTime.UtcNow.Date;
+
+            // Insert past reservations (room 101)
+            for (int i = 0; i < pastCount; i++)
+            {
+                var s = today.AddDays(-20 - i).ToString("yyyy-MM-dd");
+                var e = today.AddDays(-10 - i).ToString("yyyy-MM-dd");
+                await Insert("101", s, e);
+            }
+
+            // Insert future reservations (room 202)
+            for (int i = 0; i < futureCount; i++)
+            {
+                var s = today.AddDays(10 + i).ToString("yyyy-MM-dd");
+                var e = today.AddDays(20 + i).ToString("yyyy-MM-dd");
+                await Insert("202", s, e);
+            }
 
             var result = await _repo.GetUpcomingReservations();
 
-            Assert.That(result.Count(), Is.EqualTo(1));
+            Assert.That(result.Count(), Is.EqualTo(futureCount));
+            Assert.That(result.All(r => r.RoomNumber == "202"), Is.True);
         }
 
-        [Test]
-        public async Task GetUpcomingReservations_MixedReservations_ReturnsOnlyFuture()
+        // Results must be ordered by Start ASC
+        [TestCase("101", 5, 10, "202", 1, 4,  "202", "101", TestName = "Upcoming_OrderedByStart_EarlierStartFirst")]
+        [TestCase("101", 1,  3, "202", 4, 8,  "101", "202", TestName = "Upcoming_OrderedByStart_LaterStartSecond")]
+        public async Task GetUpcomingReservations_MultipleReservations_ReturnedOrderedByStartAsc(
+            string room1, int start1, int end1,
+            string room2, int start2, int end2,
+            string expectedFirst, string expectedSecond)
         {
-            await Insert("101", "2000-01-01", "2000-01-05"); // past
-            await Insert("202", "2099-06-01", "2099-06-10"); // future
+            var today = DateTime.UtcNow.Date;
 
-            var result = await _repo.GetUpcomingReservations();
+            await Insert(room1,
+                today.AddDays(start1).ToString("yyyy-MM-dd"),
+                today.AddDays(end1).ToString("yyyy-MM-dd"));
 
-            Assert.That(result.Count(), Is.EqualTo(1));
-            Assert.That(result.First().RoomNumber, Is.EqualTo("202"));
-        }
-
-        [Test]
-        public async Task GetUpcomingReservations_ReturnsOrderedByStart()
-        {
-            await Insert("202", "2099-07-01", "2099-07-10");
-            await Insert("101", "2099-06-01", "2099-06-10");
+            await Insert(room2,
+                today.AddDays(start2).ToString("yyyy-MM-dd"),
+                today.AddDays(end2).ToString("yyyy-MM-dd"));
 
             var result = (await _repo.GetUpcomingReservations()).ToList();
 
-            Assert.That(result[0].RoomNumber, Is.EqualTo("101"));
-            Assert.That(result[1].RoomNumber, Is.EqualTo("202"));
+            Assert.That(result[0].RoomNumber, Is.EqualTo(expectedFirst));
+            Assert.That(result[1].RoomNumber, Is.EqualTo(expectedSecond));
+        }
+
+        // Empty table edge case
+        [Test]
+        public async Task GetUpcomingReservations_EmptyTable_ReturnsEmpty()
+        {
+            var result = await _repo.GetUpcomingReservations();
+            Assert.That(result, Is.Empty);
         }
 
         // ── DeleteReservation ────────────────────────────────────────────────────

@@ -76,6 +76,29 @@ namespace Repositories
             return updated;
         }
 
+        public async Task<Guest> GetOrCreateGuest(string email)
+        {
+            var existing = await _db.QueryFirstOrDefaultAsync<Guest>(
+                "SELECT * FROM Guests WHERE Email = @email;",
+                new { email }
+            );
+
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            // Derive a placeholder name from the local part of the email so the
+            // NOT NULL constraint on Name is satisfied without requiring the UI
+            // to collect it separately during booking.
+            var name = email.Split('@')[0];
+
+            return await _db.QuerySingleAsync<Guest>(
+                "INSERT INTO Guests(Email, Name, Surname) VALUES(@Email, @Name, NULL) RETURNING *",
+                new { Email = email, Name = name }
+            );
+        }
+
         public async Task<bool> DeleteGuestByEmail(string guestEmail)
         {
             var count = await _db.ExecuteAsync(

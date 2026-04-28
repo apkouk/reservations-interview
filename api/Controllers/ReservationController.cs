@@ -7,7 +7,7 @@ using Validators;
 
 namespace Controllers
 {
-    [Tags("Reservations"), Route("reservation"), Authorize(Policy = "StaffOnly")]
+    [Tags("Reservations"), Route("reservation")]
     public class ReservationController : Controller
     {
         private ReservationRepository _repo { get; set; }
@@ -21,7 +21,7 @@ namespace Controllers
             _guestRepo = guestRepository;
         }
 
-        [HttpGet, Produces("application/json"), Route("")]
+        [HttpGet, Produces("application/json"), Route(""), Authorize(Policy = "StaffOnly")]
         public async Task<ActionResult<Reservation>> GetReservations()
         {
             var reservations = await _repo.GetReservations();
@@ -29,7 +29,7 @@ namespace Controllers
             return Json(reservations);
         }
 
-        [HttpGet, Produces("application/json"), Route("{reservationId}")]
+        [HttpGet, Produces("application/json"), Route("{reservationId}"), Authorize(Policy = "StaffOnly")]
         public async Task<ActionResult<Reservation>> GetRoom(Guid reservationId)
         {
             try
@@ -48,7 +48,7 @@ namespace Controllers
         /// </summary>
         /// <param name="newBooking"></param>
         /// <returns></returns>
-        [HttpPost, Produces("application/json"), Route("")]
+        [HttpPost, Produces("application/json"), Route(""), AllowAnonymous]
         public async Task<ActionResult<Reservation>> BookReservation(
             [FromBody] Reservation? newBooking
         )
@@ -68,14 +68,20 @@ namespace Controllers
             {
                 BookingValidator.Validate(newBooking);
 
-                // Verify the guest exists
-                await _guestRepo.GetGuestByEmail(newBooking.GuestEmail);
+                // Ensure the guest record exists, creating one on-demand if this is
+                // their first booking (the UI only supplies an email, not a full profile).
+                await _guestRepo.GetOrCreateGuest(newBooking.GuestEmail);
 
                 // Verify the room exists
                 await _roomRepo.GetRoom(newBooking.RoomNumber);
 
                 var createdReservation = await _repo.CreateReservation(newBooking);
-                return Created($"/reservation/{createdReservation.Id}", createdReservation);
+
+                // CreatedAtAction delegates URL generation to the routing infrastructure,
+                // so it automatically prepends whatever PathBase (e.g. /api) the host or reverse proxy has configured.
+                // The Location header will now always be a correctly-rooted URL that resolves to GET /reservation/{id}
+                // regardless of where the app is mounted.
+                return CreatedAtAction(nameof(GetRoom), new { reservationId = createdReservation.Id }, createdReservation);
             }
             catch (ConflictException ex)
             {
@@ -99,7 +105,7 @@ namespace Controllers
         }
 
 
-        [HttpDelete, Produces("application/json"), Route("{reservationId}")]
+        [HttpDelete, Produces("application/json"), Route("{reservationId}"), Authorize(Policy = "StaffOnly")]
         public async Task<IActionResult> DeleteReservation(Guid reservationId)
         {
             var result = await _repo.DeleteReservation(reservationId);
@@ -107,7 +113,7 @@ namespace Controllers
             return result ? NoContent() : NotFound();
         }
 
-        [HttpPost, Produces("application/json"), Route("{reservationId}/checkin")]
+        [HttpPost, Produces("application/json"), Route("{reservationId}/checkin"), Authorize(Policy = "StaffOnly")]
         public async Task<ActionResult<Reservation>> CheckIn(Guid reservationId, [FromBody] CheckInRequest? request)
         {
             if (request is null || string.IsNullOrEmpty(request.GuestEmail))
