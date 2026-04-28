@@ -72,6 +72,8 @@ namespace Db
             if (colMap.TryGetValue(nameof(Reservation.Start), out var startType) && startType.Equals("INT", StringComparison.OrdinalIgnoreCase))
             {
                 await db.ExecuteAsync("PRAGMA foreign_keys = OFF;");
+                // Drop any leftover temp table from a previous failed migration attempt.
+                await db.ExecuteAsync("DROP TABLE IF EXISTS Reservations_new;");
                 await db.ExecuteAsync(
                     $@"
                   CREATE TABLE Reservations_new (
@@ -89,8 +91,9 @@ namespace Db
                   );
                 "
                 );
-                // Cast existing INT epoch values (seconds since Unix epoch) to ISO-8601 TEXT
-                // so date comparisons remain correct after migration.
+                // The old schema declared Start/End as INT but Dapper always stored
+                // ISO-8601 strings ("yyyy-MM-dd HH:mm:ss") due to DateTime serialisation.
+                // Cast the existing values to TEXT as-is — no epoch conversion needed.
                 await db.ExecuteAsync(
                     $@"
                   INSERT INTO Reservations_new
@@ -98,8 +101,8 @@ namespace Db
                     {nameof(Reservation.Id)},
                     {nameof(Reservation.GuestEmail)},
                     {nameof(Reservation.RoomNumber)},
-                    datetime({nameof(Reservation.Start)}, 'unixepoch') AS {nameof(Reservation.Start)},
-                    datetime({nameof(Reservation.End)},   'unixepoch') AS {nameof(Reservation.End)},
+                    CAST({nameof(Reservation.Start)} AS TEXT) AS {nameof(Reservation.Start)},
+                    CAST({nameof(Reservation.End)}   AS TEXT) AS {nameof(Reservation.End)},
                     {nameof(Reservation.CheckedIn)},
                     {nameof(Reservation.CheckedOut)}
                   FROM Reservations;
