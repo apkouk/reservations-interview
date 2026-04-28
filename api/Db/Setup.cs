@@ -62,6 +62,53 @@ namespace Db
               );
             "
             );
+
+            // Migration: if Start/End were created as INT (old schema) migrate them to TEXT.
+            // SQLite does not support ALTER COLUMN, so we use the standard rename-copy-drop pattern.
+            var reservationColumns = await db.QueryAsync<(string name, string type)>(
+                "SELECT name, type FROM pragma_table_info('Reservations');"
+            );
+            var colMap = reservationColumns.ToDictionary(c => c.name, c => c.type, StringComparer.OrdinalIgnoreCase);
+            if (colMap.TryGetValue(nameof(Reservation.Start), out var startType) && startType.Equals("INT", StringComparison.OrdinalIgnoreCase))
+            {
+                await db.ExecuteAsync("PRAGMA foreign_keys = OFF;");
+                await db.ExecuteAsync(
+                    $@"
+                  CREATE TABLE Reservations_new (
+                    {nameof(Reservation.Id)} TEXT PRIMARY KEY NOT NULL,
+                    {nameof(Reservation.GuestEmail)} TEXT NOT NULL,
+                    {nameof(Reservation.RoomNumber)} INT NOT NULL,
+                    {nameof(Reservation.Start)} TEXT NOT NULL,
+                    {nameof(Reservation.End)} TEXT NOT NULL,
+                    {nameof(Reservation.CheckedIn)} INT NOT NULL DEFAULT FALSE,
+                    {nameof(Reservation.CheckedOut)} INT NOT NULL DEFAULT FALSE,
+                    FOREIGN KEY ({nameof(Reservation.GuestEmail)})
+                      REFERENCES Guests ({nameof(Guest.Email)}),
+                    FOREIGN KEY ({nameof(Reservation.RoomNumber)})
+                      REFERENCES Rooms ({nameof(Room.Number)})
+                  );
+                "
+                );
+                // Cast existing INT epoch values (seconds since Unix epoch) to ISO-8601 TEXT
+                // so date comparisons remain correct after migration.
+                await db.ExecuteAsync(
+                    $@"
+                  INSERT INTO Reservations_new
+                  SELECT
+                    {nameof(Reservation.Id)},
+                    {nameof(Reservation.GuestEmail)},
+                    {nameof(Reservation.RoomNumber)},
+                    datetime({nameof(Reservation.Start)}, 'unixepoch') AS {nameof(Reservation.Start)},
+                    datetime({nameof(Reservation.End)},   'unixepoch') AS {nameof(Reservation.End)},
+                    {nameof(Reservation.CheckedIn)},
+                    {nameof(Reservation.CheckedOut)}
+                  FROM Reservations;
+                "
+                );
+                await db.ExecuteAsync("DROP TABLE Reservations;");
+                await db.ExecuteAsync("ALTER TABLE Reservations_new RENAME TO Reservations;");
+                await db.ExecuteAsync("PRAGMA foreign_keys = ON;");
+            }
         }
     }
 }

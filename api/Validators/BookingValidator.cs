@@ -8,6 +8,16 @@ namespace Validators
     {
         public static void Validate(Reservation booking)
         {
+            if (string.IsNullOrWhiteSpace(booking.RoomNumber))
+            {
+                throw new InvalidBooking("Room number is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(booking.GuestEmail))
+            {
+                throw new InvalidBooking("Guest email is required.");
+            }
+
             if (!Room.IsValidRoomNumber(booking.RoomNumber))
             {
                 throw new InvalidBooking($"'{booking.RoomNumber}' is not a valid room number - must be exactly 3 digits and the last two digits cannot be 00 (e.g. 101, 202).");
