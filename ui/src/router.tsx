@@ -29,10 +29,14 @@ function getRootRoute() {
 const errorRoute = createRoute({
   path: "/error",
   getParentRoute: getRootRoute,
-  validateSearch: (search: Record<string, unknown>) => ({
-    status: Number(search.status ?? 500),
-    message: search.message as string | undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>) => {
+    const parsed = Number(search.status);
+    const status = Number.isFinite(parsed) && parsed >= 100 && parsed <= 599 ? parsed : 500;
+    return {
+      status,
+      message: typeof search.message === "string" ? search.message : undefined,
+    };
+  },
   component: function ErrorRoute() {
     const { status, message } = errorRoute.useSearch();
     return <ErrorPage statusCode={status} message={message} />;
