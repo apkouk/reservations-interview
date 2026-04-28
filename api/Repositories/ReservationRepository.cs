@@ -93,7 +93,7 @@ namespace Repositories
             );
 
             ReservationConflictValidator.ValidateNoConflict(newReservation, conflict != null);
-        }       
+        }
 
         public async Task<bool> DeleteReservation(Guid reservationId)
         {
@@ -167,12 +167,16 @@ namespace Repositories
                 tx
             );
 
-            var roomNumberInt = Room.ConvertRoomNumberToInt(reservation.RoomNumber);
-            await _db.ExecuteAsync(
-                "UPDATE Rooms SET State = @state WHERE Number = @roomNumberInt;",
-                new { state = Models.State.Occupied, roomNumberInt },
-                tx
-            );
+            var updatedRooms = await _db.ExecuteAsync(
+                       "UPDATE Rooms SET State = @state WHERE Number = @roomNumberInt;",
+                       new { state = Models.State.Occupied, roomNumberInt },
+                       tx
+                   );
+
+            if (updatedRooms != 1)
+            {
+                throw new InvalidOperationException("Room update failed for reservation check-in.");
+            }
 
             tx.Commit();
 
@@ -180,48 +184,48 @@ namespace Repositories
         }
 
         private class ReservationDb
-    {
-        public string Id { get; set; }
-        public int RoomNumber { get; set; }
-
-        public string GuestEmail { get; set; }
-
-        public DateTime Start { get; set; }
-        public DateTime End { get; set; }
-        public bool CheckedIn { get; set; }
-        public bool CheckedOut { get; set; }
-
-        public ReservationDb()
         {
-            Id = Guid.Empty.ToString();
-            RoomNumber = 0;
-            GuestEmail = "";
-        }
+            public string Id { get; set; }
+            public int RoomNumber { get; set; }
 
-        public ReservationDb(Reservation reservation)
-        {
-            Id = reservation.Id.ToString();
-            RoomNumber = Room.ConvertRoomNumberToInt(reservation.RoomNumber);
-            GuestEmail = reservation.GuestEmail;
-            Start = reservation.Start;
-            End = reservation.End;
-            CheckedIn = reservation.CheckedIn;
-            CheckedOut = reservation.CheckedOut;
-        }
+            public string GuestEmail { get; set; }
 
-        public Reservation ToDomain()
-        {
-            return new Reservation
+            public DateTime Start { get; set; }
+            public DateTime End { get; set; }
+            public bool CheckedIn { get; set; }
+            public bool CheckedOut { get; set; }
+
+            public ReservationDb()
             {
-                Id = Guid.Parse(Id),
-                RoomNumber = Room.FormatRoomNumber(RoomNumber),
-                GuestEmail = GuestEmail,
-                Start = Start,
-                End = End,
-                CheckedIn = CheckedIn,
-                CheckedOut = CheckedOut
-            };
+                Id = Guid.Empty.ToString();
+                RoomNumber = 0;
+                GuestEmail = "";
+            }
+
+            public ReservationDb(Reservation reservation)
+            {
+                Id = reservation.Id.ToString();
+                RoomNumber = Room.ConvertRoomNumberToInt(reservation.RoomNumber);
+                GuestEmail = reservation.GuestEmail;
+                Start = reservation.Start;
+                End = reservation.End;
+                CheckedIn = reservation.CheckedIn;
+                CheckedOut = reservation.CheckedOut;
+            }
+
+            public Reservation ToDomain()
+            {
+                return new Reservation
+                {
+                    Id = Guid.Parse(Id),
+                    RoomNumber = Room.FormatRoomNumber(RoomNumber),
+                    GuestEmail = GuestEmail,
+                    Start = Start,
+                    End = End,
+                    CheckedIn = CheckedIn,
+                    CheckedOut = CheckedOut
+                };
+            }
         }
     }
-}
 }
