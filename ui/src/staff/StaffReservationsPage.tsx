@@ -15,6 +15,7 @@ import {
 } from "@radix-ui/themes";
 import { useGetStaffReservations, useCheckIn, useGetRoomsState, useSetRoomState, RoomState, StaffReservation, StaffRoom } from "./api";
 import { LoadingCard } from "../components/LoadingCard";
+import { useSortableTable } from "../utils/useSortableTable";
 
 function RoomStateDialog({
   room,
@@ -128,11 +129,37 @@ export function StaffReservationsPage() {
   const [roomStateDialog, setRoomStateDialog] = useState<{ room: StaffRoom; targetState: RoomState } | null>(null);
 
   const today = new Date().toLocaleDateString();
-
   const isToday = (dateStr: string) => new Date(dateStr).toLocaleDateString() === today;
 
-  const filtered = reservations?.filter((r) =>
-    todayOnly ? isToday(r.start) : true
+  const filtered = reservations?.filter((r) => todayOnly ? isToday(r.start) : true);
+
+  type SortKey = "roomNumber" | "guestEmail" | "start" | "end" | "status";
+
+  // Derive a stable string for the "status" pseudo-column so the hook can sort it.
+  const getStatus = (r: StaffReservation): string =>
+    r.checkedOut ? "Checked Out" : r.checkedIn ? "Checked In" : "Upcoming";
+
+  const { sorted, sortState, toggleSort } = useSortableTable<
+    StaffReservation & { status: string },
+    SortKey
+  >(
+    filtered?.map((r) => ({ ...r, status: getStatus(r) })),
+    "start",
+    "asc"
+  );
+
+  // Arrow indicator for active sort column
+  const arrow = (key: SortKey) =>
+    sortState.key !== key ? " ↕" : sortState.direction === "asc" ? " ↑" : " ↓";
+
+  // Clickable header cell
+  const SortHeader = ({ col, label }: { col: SortKey; label: string }) => (
+    <Table.ColumnHeaderCell
+      onClick={() => toggleSort(col)}
+      style={{ cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}
+    >
+      {label}{arrow(col)}
+    </Table.ColumnHeaderCell>
   );
 
   return (
@@ -165,16 +192,16 @@ export function StaffReservationsPage() {
           <Table.Root variant="surface">
             <Table.Header>
               <Table.Row>
-                <Table.ColumnHeaderCell>Room</Table.ColumnHeaderCell>
-                <Table.ColumnHeaderCell>Guest Email</Table.ColumnHeaderCell>
-                <Table.ColumnHeaderCell>Start</Table.ColumnHeaderCell>
-                <Table.ColumnHeaderCell>End</Table.ColumnHeaderCell>
-                <Table.ColumnHeaderCell>Status</Table.ColumnHeaderCell>
+                <SortHeader col="roomNumber" label="Room" />
+                <SortHeader col="guestEmail" label="Guest Email" />
+                <SortHeader col="start" label="Start" />
+                <SortHeader col="end" label="End" />
+                <SortHeader col="status" label="Status" />
                 <Table.ColumnHeaderCell />
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {filtered.map((r) => (
+              {sorted.map((r) => (
                 <Table.Row key={r.id}>
                   <Table.Cell>#{r.roomNumber}</Table.Cell>
                   <Table.Cell>{r.guestEmail}</Table.Cell>

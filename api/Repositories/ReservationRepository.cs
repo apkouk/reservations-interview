@@ -154,6 +154,11 @@ namespace Repositories
                 throw new InvalidOperationException("Reservation is already checked in.");
             }
 
+            if (_db.State != System.Data.ConnectionState.Open)
+            {
+                _db.Open();
+            }
+
             using var tx = _db.BeginTransaction();
 
             var updated = await _db.QuerySingleAsync<ReservationDb>(
