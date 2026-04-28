@@ -17,7 +17,7 @@ namespace Authorization
 
         protected override Task HandleChallengeAsync(AuthenticationProperties properties)
         {
-            Response.StatusCode = 403;
+            Response.StatusCode = 401;
             return Task.CompletedTask;
         }
 

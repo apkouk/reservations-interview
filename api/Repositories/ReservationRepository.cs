@@ -54,7 +54,7 @@ namespace Repositories
 
             if (reservation == null)
             {
-                throw new NotFoundException($"Room {reservationId} not found");
+                throw new NotFoundException($"Reservation {reservationId} not found");
             }
 
             return reservation.ToDomain();

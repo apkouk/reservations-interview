@@ -43,12 +43,12 @@ namespace Repositories
 
         public async Task<bool> GuestExists(string guestEmail)
         {
-            var guest = await _db.QueryFirstOrDefaultAsync<Guest>(
-                "SELECT * FROM Guests WHERE Email = @guestEmail;",
+            var count = await _db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(1) FROM Guests WHERE Email = @guestEmail;",
                 new { guestEmail }
             );
 
-            return guest != null;
+            return count > 0;
         }
 
         public async Task<Guest> CreateGuest(Guest newGuest)

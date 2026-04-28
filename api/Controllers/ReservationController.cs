@@ -30,7 +30,7 @@ namespace Controllers
         }
 
         [HttpGet, Produces("application/json"), Route("{reservationId}"), Authorize(Policy = "StaffOnly")]
-        public async Task<ActionResult<Reservation>> GetRoom(Guid reservationId)
+        public async Task<ActionResult<Reservation>> GetReservation(Guid reservationId)
         {
             try
             {
@@ -100,7 +100,7 @@ namespace Controllers
                 Console.WriteLine("An error occured when trying to book a reservation:");
                 Console.WriteLine(ex.ToString());
 
-                return BadRequest("Invalid reservation");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
             }
         }
 
