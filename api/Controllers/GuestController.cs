@@ -53,7 +53,8 @@ namespace Controllers
             try
             {
                 var created = await _repo.CreateGuest(newGuest);
-                return Created($"/guest/{created.Email}", created);
+                var location = $"{Request.PathBase}/guest/{System.Uri.EscapeDataString(created.Email)}";
+                return Created(location, created);
             }
             catch (ConflictException)
             {
