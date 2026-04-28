@@ -167,11 +167,12 @@ namespace Repositories
                 tx
             );
 
+            var roomNumberInt = Room.ConvertRoomNumberToInt(reservation.RoomNumber);
             var updatedRooms = await _db.ExecuteAsync(
                        "UPDATE Rooms SET State = @state WHERE Number = @roomNumberInt;",
                        new { state = Models.State.Occupied, roomNumberInt },
                        tx
-                   );
+                   );       
 
             if (updatedRooms != 1)
             {
