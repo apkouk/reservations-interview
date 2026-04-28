@@ -35,6 +35,7 @@ var builder = WebApplication.CreateBuilder(args);
     Services.AddSingleton<IAuthorizationHandler, StaffAuthorizationHandler>();
     Services.AddEndpointsApiExplorer();
     Services.AddSwaggerGen();
+    Services.AddDataProtection();
 }
 
 var app = builder.Build();
